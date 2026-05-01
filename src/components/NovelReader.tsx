@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 
 interface NovelPage {
   content: string;
@@ -27,6 +27,7 @@ export default function NovelReader() {
   const [translating, setTranslating] = useState(false);
   const [error, setError] = useState("");
   const [viewMode, setViewMode] = useState<"both" | "original" | "translation">("both");
+  const translatingRef = useRef<Set<number>>(new Set());
 
   const fetchNovel = useCallback(async () => {
     if (!url.trim()) return;
@@ -35,6 +36,7 @@ export default function NovelReader() {
     setNovel(null);
     setTranslatedPages({});
     setCurrentPage(0);
+    translatingRef.current.clear();
 
     try {
       const resp = await fetch(
@@ -51,8 +53,9 @@ export default function NovelReader() {
     }
   }, [url]);
 
-  const translatePage = async (page: NovelPage, pageIndex: number) => {
-    if (translatedPages[pageIndex]) return;
+  const translatePage = useCallback(async (page: NovelPage, pageIndex: number) => {
+    if (translatingRef.current.has(pageIndex)) return;
+    translatingRef.current.add(pageIndex);
     setTranslating(true);
     try {
       const lines = page.content
@@ -73,6 +76,7 @@ export default function NovelReader() {
         [pageIndex]: data.translated.join("\n\n"),
       }));
     } catch {
+      translatingRef.current.delete(pageIndex);
       setTranslatedPages((prev) => ({
         ...prev,
         [pageIndex]: "[Translation failed]",
@@ -80,7 +84,7 @@ export default function NovelReader() {
     } finally {
       setTranslating(false);
     }
-  };
+  }, []);
 
   const goToPage = (page: number) => {
     if (!novel || page < 0 || page >= novel.totalPages) return;
