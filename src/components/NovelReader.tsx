@@ -26,6 +26,7 @@ export default function NovelReader() {
   const [loading, setLoading] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [error, setError] = useState("");
+  const [viewMode, setViewMode] = useState<"both" | "original" | "translation">("both");
 
   const fetchNovel = useCallback(async () => {
     if (!url.trim()) return;
@@ -147,7 +148,7 @@ export default function NovelReader() {
             )}
           </div>
 
-          {/* Page nav */}
+          {/* Controls */}
           <div className="flex items-center justify-between mb-4 bg-gray-900 rounded-lg px-4 py-2">
             <button
               onClick={() => goToPage(currentPage - 1)}
@@ -156,14 +157,31 @@ export default function NovelReader() {
             >
               Prev
             </button>
-            <span className="text-sm text-gray-400">
-              {currentPageData.chapter && (
-                <span className="text-gray-200 mr-2">
-                  {currentPageData.chapter}
-                </span>
-              )}
-              Page {currentPage + 1} / {novel.totalPages}
-            </span>
+            <div className="flex items-center gap-4">
+              <div className="flex bg-gray-800 rounded overflow-hidden">
+                {(["both", "original", "translation"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setViewMode(mode)}
+                    className={`px-3 py-1 text-xs capitalize transition-colors ${
+                      viewMode === mode
+                        ? "bg-blue-600 text-white"
+                        : "text-gray-400 hover:text-gray-200"
+                    }`}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+              <span className="text-sm text-gray-400">
+                {currentPageData.chapter && (
+                  <span className="text-gray-200 mr-2">
+                    {currentPageData.chapter}
+                  </span>
+                )}
+                Page {currentPage + 1} / {novel.totalPages}
+              </span>
+            </div>
             <button
               onClick={() => goToPage(currentPage + 1)}
               disabled={currentPage === novel.totalPages - 1}
@@ -173,37 +191,41 @@ export default function NovelReader() {
             </button>
           </div>
 
-          {/* Side-by-side */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Content */}
+          <div className={`grid gap-4 ${viewMode === "both" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
             {/* Original */}
-            <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
-                Original
-              </h3>
-              <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap leading-relaxed text-gray-200">
-                {currentPageData.content}
+            {viewMode !== "translation" && (
+              <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
+                  Original
+                </h3>
+                <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap leading-relaxed text-gray-200">
+                  {currentPageData.content}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Translated */}
-            <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
-                Translation (Chinese)
-              </h3>
-              {translating && !translatedPages[currentPage] ? (
-                <div className="text-gray-500 text-sm animate-pulse">
-                  Translating...
-                </div>
-              ) : translatedPages[currentPage] ? (
-                <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap leading-relaxed text-gray-200">
-                  {translatedPages[currentPage]}
-                </div>
-              ) : (
-                <div className="text-gray-600 text-sm">
-                  No translation available
-                </div>
-              )}
-            </div>
+            {viewMode !== "original" && (
+              <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
+                  Translation (Chinese)
+                </h3>
+                {translating && !translatedPages[currentPage] ? (
+                  <div className="text-gray-500 text-sm animate-pulse">
+                    Translating...
+                  </div>
+                ) : translatedPages[currentPage] ? (
+                  <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap leading-relaxed text-gray-200">
+                    {translatedPages[currentPage]}
+                  </div>
+                ) : (
+                  <div className="text-gray-600 text-sm">
+                    No translation available
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Bottom page nav */}
