@@ -79,6 +79,10 @@ export interface TagSearchResult {
   tags: string[];
   xRestrict: number;
   url: string;
+  coverUrl: string | null;
+  caption: string;
+  readingTime: number;
+  profileImageUrl: string | null;
 }
 
 export interface TagSearchResponse {
@@ -117,23 +121,20 @@ export async function searchNovelsByTag(
   const total = body.novel?.total || 0;
 
   const novels: TagSearchResult[] = rawNovels.map(
-    (n: {
-      id?: string;
-      title?: string;
-      userName?: string;
-      textCount?: number;
-      bookmarkCount?: number;
-      tags?: string[];
-      xRestrict?: number;
-    }) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (n: any) => ({
       id: String(n.id || ""),
       title: n.title || "Untitled",
       userName: n.userName || "Unknown",
-      textCount: n.textCount || 0,
+      textCount: n.textLength || n.textCount || 0,
       bookmarkCount: n.bookmarkCount || 0,
       tags: (n.tags || []).slice(0, 6),
       xRestrict: n.xRestrict || 0,
       url: `https://www.pixiv.net/novel/show.php?id=${n.id || ""}`,
+      coverUrl: n.cover?.urls?.["240mw"] || null,
+      caption: n.caption || "",
+      readingTime: n.readingTime || 0,
+      profileImageUrl: n.profileImageUrl || null,
     })
   );
 

@@ -94,30 +94,30 @@ export default function NovelReader() {
   };
 
   // Auto-load novel from URL query param (?url=ID)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const urlParam = params.get("url");
-    if (urlParam) {
-      setUrl(urlParam);
-      // Trigger fetch after state update
-      setTimeout(() => {
-        const input = document.querySelector<HTMLInputElement>('input[type="text"]');
-        if (input) input.form?.requestSubmit?.();
-      }, 0);
-    }
-  }, []);
-
-  // Auto-fetch when url state is set from URL param
   const initialFetchDone = useRef(false);
   useEffect(() => {
-    if (url && !novel && !loading && !initialFetchDone.current) {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("url")) {
-        initialFetchDone.current = true;
-        fetchNovel();
-      }
-    }
-  }, [url, novel, loading, fetchNovel]);
+    if (initialFetchDone.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const urlParam = params.get("url");
+    if (!urlParam) return;
+    initialFetchDone.current = true;
+    setUrl(urlParam);
+
+    // Fetch directly instead of relying on state update
+    setLoading(true);
+    setError("");
+    fetch(`/api/novel?url=${encodeURIComponent(urlParam)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) throw new Error(data.error);
+        setNovel(data);
+        translatePage(data.pages[0], 0);
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : "Failed to fetch novel");
+      })
+      .finally(() => setLoading(false));
+  }, [translatePage]);
 
   const currentPageData = novel?.pages[currentPage];
 
