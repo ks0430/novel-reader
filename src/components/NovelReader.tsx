@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import Link from "next/link";
 
 interface NovelPage {
   content: string;
@@ -92,6 +93,32 @@ export default function NovelReader() {
     translatePage(novel.pages[page], page);
   };
 
+  // Auto-load novel from URL query param (?url=ID)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlParam = params.get("url");
+    if (urlParam) {
+      setUrl(urlParam);
+      // Trigger fetch after state update
+      setTimeout(() => {
+        const input = document.querySelector<HTMLInputElement>('input[type="text"]');
+        if (input) input.form?.requestSubmit?.();
+      }, 0);
+    }
+  }, []);
+
+  // Auto-fetch when url state is set from URL param
+  const initialFetchDone = useRef(false);
+  useEffect(() => {
+    if (url && !novel && !loading && !initialFetchDone.current) {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("url")) {
+        initialFetchDone.current = true;
+        fetchNovel();
+      }
+    }
+  }, [url, novel, loading, fetchNovel]);
+
   const currentPageData = novel?.pages[currentPage];
 
   return (
@@ -99,7 +126,16 @@ export default function NovelReader() {
       {/* Header */}
       <header className="border-b border-gray-800 bg-gray-900/80 backdrop-blur sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-3">
-          <h1 className="text-lg font-semibold mb-3">Pixiv Novel Reader</h1>
+          <div className="flex items-center gap-3 mb-3">
+            <h1 className="text-lg font-semibold">Pixiv Novel Reader</h1>
+            <span className="text-gray-700">/</span>
+            <Link
+              href="/tag"
+              className="text-sm text-gray-400 hover:text-gray-200 transition-colors"
+            >
+              CP Tag Search
+            </Link>
+          </div>
           <div className="flex gap-2">
             <input
               type="text"

@@ -70,6 +70,81 @@ export async function fetchNovel(
   };
 }
 
+export interface TagSearchResult {
+  id: string;
+  title: string;
+  userName: string;
+  textCount: number;
+  bookmarkCount: number;
+  tags: string[];
+  xRestrict: number;
+  url: string;
+}
+
+export interface TagSearchResponse {
+  total: number;
+  novels: TagSearchResult[];
+  page: number;
+  hasMore: boolean;
+}
+
+export async function searchNovelsByTag(
+  tag: string,
+  sessionId: string,
+  mode: "safe" | "r18" | "all" = "safe",
+  page: number = 1
+): Promise<TagSearchResponse> {
+  const encoded = encodeURIComponent(tag);
+  const url =
+    `https://www.pixiv.net/ajax/search/novels/${encoded}` +
+    `?word=${encoded}&order=date_d&mode=${mode}&p=${page}` +
+    `&s_mode=s_tag_full&gs=1`;
+
+  const resp = await fetch(url, {
+    headers: {
+      ...PIXIV_HEADERS,
+      Cookie: `PHPSESSID=${sessionId}`,
+    },
+  });
+
+  const data = await resp.json();
+  if (data.error) {
+    throw new Error(data.message || "Search failed");
+  }
+
+  const body = data.body;
+  const rawNovels = body.novel?.data || [];
+  const total = body.novel?.total || 0;
+
+  const novels: TagSearchResult[] = rawNovels.map(
+    (n: {
+      id?: string;
+      title?: string;
+      userName?: string;
+      textCount?: number;
+      bookmarkCount?: number;
+      tags?: string[];
+      xRestrict?: number;
+    }) => ({
+      id: String(n.id || ""),
+      title: n.title || "Untitled",
+      userName: n.userName || "Unknown",
+      textCount: n.textCount || 0,
+      bookmarkCount: n.bookmarkCount || 0,
+      tags: (n.tags || []).slice(0, 6),
+      xRestrict: n.xRestrict || 0,
+      url: `https://www.pixiv.net/novel/show.php?id=${n.id || ""}`,
+    })
+  );
+
+  return {
+    total,
+    novels,
+    page,
+    hasMore: page * 30 < total,
+  };
+}
+
 export function extractNovelId(input: string): string | null {
   const m =
     input.match(/novel\/show\.php\?id=(\d+)/) ||
