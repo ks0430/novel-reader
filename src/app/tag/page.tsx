@@ -16,6 +16,9 @@ interface TagNovel {
   caption: string;
   readingTime: number;
   profileImageUrl: string | null;
+  isSeries: boolean;
+  seriesId: string | null;
+  episodeCount: number | null;
 }
 
 interface SearchResult {
@@ -255,7 +258,11 @@ export default function TagPage() {
             {result.novels.map((novel) => (
               <Link
                 key={novel.id}
-                href={`/?url=${encodeURIComponent(novel.url)}`}
+                href={
+                  novel.isSeries && novel.seriesId
+                    ? `/series/${novel.seriesId}`
+                    : `/?url=${encodeURIComponent(novel.url)}`
+                }
                 className="flex gap-3 bg-gray-900 border border-gray-800 rounded-lg p-3 hover:border-gray-600 transition-colors group"
               >
                 {/* Cover thumbnail */}
@@ -279,6 +286,11 @@ export default function TagPage() {
                   {/* Title */}
                   <h3 className="font-bold text-sm text-gray-100 leading-tight group-hover:text-blue-400 transition-colors line-clamp-1">
                     {novel.title}
+                    {novel.isSeries && novel.episodeCount && (
+                      <span className="ml-1.5 px-1.5 py-0.5 bg-blue-900/60 text-blue-300 text-xs rounded font-normal">
+                        {novel.episodeCount}話
+                      </span>
+                    )}
                   </h3>
 
                   {/* Author */}

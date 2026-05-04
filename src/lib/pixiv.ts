@@ -70,6 +70,60 @@ export async function fetchNovel(
   };
 }
 
+export interface SeriesChapter {
+  id: string;
+  title: string;
+  available: boolean;
+}
+
+export interface SeriesData {
+  seriesId: string;
+  seriesTitle: string;
+  chapters: SeriesChapter[];
+}
+
+export async function fetchSeriesChapters(
+  seriesId: string,
+  sessionId: string
+): Promise<SeriesData> {
+  const resp = await fetch(
+    `https://www.pixiv.net/ajax/novel/series/${seriesId}?limit=30&last_order=0&order_by=asc`,
+    {
+      headers: {
+        ...PIXIV_HEADERS,
+        Cookie: `PHPSESSID=${sessionId}`,
+      },
+    }
+  );
+  const data = await resp.json();
+  if (data.error) {
+    throw new Error(data.message || "Failed to fetch series");
+  }
+
+  const seriesTitle = data.body?.title || "Untitled Series";
+
+  const titlesResp = await fetch(
+    `https://www.pixiv.net/ajax/novel/series/${seriesId}/content_titles`,
+    {
+      headers: {
+        ...PIXIV_HEADERS,
+        Cookie: `PHPSESSID=${sessionId}`,
+      },
+    }
+  );
+  const titlesData = await titlesResp.json();
+
+  const chapters: SeriesChapter[] = (titlesData.body || []).map(
+    (t: { id: string; title: string; available?: boolean }) => ({
+      id: t.id,
+      title: t.title,
+      available: t.available !== false,
+    })
+  );
+
+  return { seriesId, seriesTitle, chapters };
+}
+
 export interface TagSearchResult {
   id: string;
   title: string;
@@ -83,6 +137,9 @@ export interface TagSearchResult {
   caption: string;
   readingTime: number;
   profileImageUrl: string | null;
+  isSeries: boolean;
+  seriesId: string | null;
+  episodeCount: number | null;
 }
 
 export interface TagSearchResponse {
@@ -122,20 +179,29 @@ export async function searchNovelsByTag(
 
   const novels: TagSearchResult[] = rawNovels.map(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (n: any) => ({
-      id: String(n.novelId || n.id || ""),
-      title: n.title || "Untitled",
-      userName: n.userName || "Unknown",
-      textCount: n.textLength || n.textCount || 0,
-      bookmarkCount: n.bookmarkCount || 0,
-      tags: (n.tags || []).slice(0, 6),
-      xRestrict: n.xRestrict || 0,
-      url: `https://www.pixiv.net/novel/show.php?id=${n.novelId || n.id || ""}`,
-      coverUrl: n.cover?.urls?.["240mw"] || null,
-      caption: n.caption || "",
-      readingTime: n.readingTime || 0,
-      profileImageUrl: n.profileImageUrl || null,
-    })
+    (n: any) => {
+      const isSeries = !n.isOneshot && !n.novelId;
+      const novelOrSeriesId = String(n.novelId || n.id || "");
+      return {
+        id: novelOrSeriesId,
+        title: n.title || "Untitled",
+        userName: n.userName || "Unknown",
+        textCount: n.textLength || n.textCount || n.publishedTextLength || 0,
+        bookmarkCount: n.bookmarkCount || 0,
+        tags: (n.tags || []).slice(0, 6),
+        xRestrict: n.xRestrict || 0,
+        url: isSeries
+          ? `https://www.pixiv.net/novel/series/${n.id}`
+          : `https://www.pixiv.net/novel/show.php?id=${novelOrSeriesId}`,
+        coverUrl: n.cover?.urls?.["240mw"] || null,
+        caption: n.caption || "",
+        readingTime: n.readingTime || n.publishedReadingTime || 0,
+        profileImageUrl: n.profileImageUrl || null,
+        isSeries,
+        seriesId: isSeries ? String(n.id) : null,
+        episodeCount: n.episodeCount || n.publishedEpisodeCount || null,
+      };
+    }
   );
 
   return {
