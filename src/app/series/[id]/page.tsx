@@ -46,6 +46,7 @@ export default function SeriesPage() {
   const [translatedPages, setTranslatedPages] = useState<Record<number, string>>({});
   const [translating, setTranslating] = useState(false);
   const [viewMode, setViewMode] = useState<"both" | "original" | "translation">("both");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const translatingRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
@@ -152,9 +153,20 @@ export default function SeriesPage() {
       </header>
 
       <div className="max-w-7xl mx-auto flex">
+        {/* Sidebar toggle */}
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="fixed left-2 top-1/2 -translate-y-1/2 z-20 w-6 h-12 bg-gray-800 border border-gray-700 rounded-r-lg flex items-center justify-center text-gray-400 hover:text-gray-200 hover:bg-gray-700 transition-colors"
+          title={sidebarOpen ? "Hide chapters" : "Show chapters"}
+        >
+          <svg className={`w-3.5 h-3.5 transition-transform ${sidebarOpen ? "" : "rotate-180"}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+
         {/* Chapter list sidebar */}
-        <aside className="w-64 shrink-0 border-r border-gray-800 overflow-y-auto max-h-[calc(100vh-80px)] sticky top-[80px]">
-          <div className="p-3">
+        <aside className={`shrink-0 border-r border-gray-800 overflow-y-auto max-h-[calc(100vh-80px)] sticky top-[80px] transition-all duration-200 ${sidebarOpen ? "w-64" : "w-0 border-r-0 overflow-hidden"}`}>
+          <div className="p-3 w-64">
             <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Chapters</h2>
             <div className="space-y-1">
               {series?.chapters.map((ch, idx) => (
