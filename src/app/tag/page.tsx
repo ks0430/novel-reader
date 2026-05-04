@@ -146,7 +146,7 @@ export default function TagPage() {
             {result.novels.map((novel) => (
               <Link
                 key={novel.id}
-                href={`/?url=${novel.id}`}
+                href={`/?url=${encodeURIComponent(novel.url)}`}
                 className="flex gap-3 bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow group"
               >
                 {/* Cover thumbnail */}
