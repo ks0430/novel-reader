@@ -330,27 +330,61 @@ export default function TagPage() {
           </div>
 
           {/* Pagination */}
-          {result.total > 0 && (
-            <div className="flex items-center justify-center gap-3 mt-8">
-              <button
-                onClick={() => goToPage(page - 1)}
-                disabled={page <= 1 || loading}
-                className="px-4 py-2 text-sm bg-gray-800 border border-gray-700 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors"
-              >
-                Prev
-              </button>
-              <span className="text-sm text-gray-400">
-                Page {page} / {Math.ceil(result.total / 30)}
-              </span>
-              <button
-                onClick={() => goToPage(page + 1)}
-                disabled={!result.hasMore || loading}
-                className="px-4 py-2 text-sm bg-gray-800 border border-gray-700 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors"
-              >
-                Next
-              </button>
-            </div>
-          )}
+          {result.total > 0 && (() => {
+            const totalPages = Math.ceil(result.total / 30);
+            return (
+              <div className="flex items-center justify-center gap-2 mt-8">
+                <button
+                  onClick={() => goToPage(1)}
+                  disabled={page <= 1 || loading}
+                  className="px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors"
+                >
+                  First
+                </button>
+                <button
+                  onClick={() => goToPage(page - 1)}
+                  disabled={page <= 1 || loading}
+                  className="px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors"
+                >
+                  Prev
+                </button>
+                <div className="flex items-center gap-1.5 text-sm text-gray-400">
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={page}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (v >= 1 && v <= totalPages) goToPage(v);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const v = parseInt((e.target as HTMLInputElement).value, 10);
+                        if (v >= 1 && v <= totalPages) goToPage(v);
+                      }
+                    }}
+                    className="w-14 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-center text-sm text-gray-200 focus:outline-none focus:border-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span>/ {totalPages}</span>
+                </div>
+                <button
+                  onClick={() => goToPage(page + 1)}
+                  disabled={!result.hasMore || loading}
+                  className="px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors"
+                >
+                  Next
+                </button>
+                <button
+                  onClick={() => goToPage(totalPages)}
+                  disabled={page >= totalPages || loading}
+                  className="px-3 py-1.5 text-sm bg-gray-800 border border-gray-700 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors"
+                >
+                  Last
+                </button>
+              </div>
+            );
+          })()}
         </main>
       )}
 
