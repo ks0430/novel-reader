@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 
 interface TagNovel {
@@ -27,6 +27,8 @@ interface SearchResult {
 
 type Mode = "safe" | "r18" | "all";
 
+const STORAGE_KEY = "pixiv-favorite-tags";
+
 function formatReadingTime(seconds: number): string {
   const minutes = Math.round(seconds / 60);
   return `${minutes}分钟`;
@@ -40,6 +42,19 @@ function proxyUrl(url: string): string {
   return `/api/image?url=${encodeURIComponent(url)}`;
 }
 
+function loadFavoriteTags(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveFavoriteTags(tags: string[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tags));
+}
+
 export default function TagPage() {
   const [tag, setTag] = useState("");
   const [mode, setMode] = useState<Mode>("safe");
@@ -47,6 +62,44 @@ export default function TagPage() {
   const [result, setResult] = useState<SearchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [favoriteTags, setFavoriteTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState("");
+
+  useEffect(() => {
+    setFavoriteTags(loadFavoriteTags());
+  }, []);
+
+  const addFavoriteTag = () => {
+    const t = newTag.trim();
+    if (!t || favoriteTags.includes(t)) return;
+    const updated = [...favoriteTags, t];
+    setFavoriteTags(updated);
+    saveFavoriteTags(updated);
+    setNewTag("");
+  };
+
+  const removeFavoriteTag = (t: string) => {
+    const updated = favoriteTags.filter((x) => x !== t);
+    setFavoriteTags(updated);
+    saveFavoriteTags(updated);
+  };
+
+  const searchTag = (t: string) => {
+    setTag(t);
+    setLoading(true);
+    setError("");
+
+    const params = new URLSearchParams({ tag: t, mode, page: "1" });
+    fetch(`/api/tag?${params}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) throw new Error(data.error);
+        setResult(data);
+        setPage(1);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Search failed"))
+      .finally(() => setLoading(false));
+  };
 
   const search = useCallback(
     async (searchPage: number = 1) => {
@@ -77,19 +130,19 @@ export default function TagPage() {
   const goToPage = (p: number) => search(p);
 
   return (
-    <div className="min-h-screen bg-white text-gray-900">
+    <div className="min-h-screen bg-gray-950 text-gray-100">
       {/* Header */}
-      <header className="border-b border-gray-200 bg-white sticky top-0 z-10">
+      <header className="border-b border-gray-800 bg-gray-900/80 backdrop-blur sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 py-3">
           <div className="flex items-center gap-3 mb-3">
             <Link
               href="/"
-              className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-sm text-gray-400 hover:text-gray-200 transition-colors"
             >
               Reader
             </Link>
-            <span className="text-gray-300">/</span>
-            <h1 className="text-lg font-semibold text-gray-900">CP Tag Search</h1>
+            <span className="text-gray-700">/</span>
+            <h1 className="text-lg font-semibold">CP Tag Search</h1>
           </div>
           <div className="flex gap-2 flex-wrap">
             <input
@@ -98,17 +151,17 @@ export default function TagPage() {
               onChange={(e) => setTag(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && search(1)}
               placeholder="Enter CP tag (e.g. クロリン, 佐鸣)..."
-              className="flex-1 min-w-[200px] bg-white border border-gray-300 rounded-full px-4 py-2 text-sm focus:outline-none focus:border-blue-500 placeholder-gray-400"
+              className="flex-1 min-w-[200px] bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500 placeholder-gray-500"
             />
-            <div className="flex bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+            <div className="flex bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
               {(["safe", "r18", "all"] as const).map((m) => (
                 <button
                   key={m}
                   onClick={() => setMode(m)}
                   className={`px-3 py-2 text-sm transition-colors ${
                     mode === m
-                      ? "bg-blue-500 text-white"
-                      : "text-gray-500 hover:text-gray-700"
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-400 hover:text-gray-200"
                   }`}
                 >
                   {m === "r18" ? "R-18" : m.charAt(0).toUpperCase() + m.slice(1)}
@@ -118,7 +171,7 @@ export default function TagPage() {
             <button
               onClick={() => search(1)}
               disabled={loading || !tag.trim()}
-              className="px-5 py-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-full text-sm font-medium text-white transition-colors"
+              className="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
             >
               {loading ? "Searching..." : "Search"}
             </button>
@@ -129,8 +182,56 @@ export default function TagPage() {
       {/* Error */}
       {error && (
         <div className="max-w-5xl mx-auto px-4 mt-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-600 text-sm">
+          <div className="bg-red-900/50 border border-red-700 rounded-lg px-4 py-3 text-red-200 text-sm">
             {error}
+          </div>
+        </div>
+      )}
+
+      {/* Favorite Tags */}
+      {!result && !loading && (
+        <div className="max-w-5xl mx-auto px-4 py-6">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
+            Favorite Tags
+          </h2>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {favoriteTags.map((t) => (
+              <div key={t} className="flex items-center gap-1 group">
+                <button
+                  onClick={() => searchTag(t)}
+                  className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-200 hover:bg-gray-700 hover:border-gray-600 transition-colors"
+                >
+                  #{t}
+                </button>
+                <button
+                  onClick={() => removeFavoriteTag(t)}
+                  className="w-5 h-5 flex items-center justify-center text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                  title="Remove"
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
+            {favoriteTags.length === 0 && (
+              <p className="text-sm text-gray-600">No favorite tags yet</p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addFavoriteTag()}
+              placeholder="Add a tag..."
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 placeholder-gray-500 w-48"
+            />
+            <button
+              onClick={addFavoriteTag}
+              disabled={!newTag.trim()}
+              className="px-3 py-1.5 bg-gray-800 border border-gray-700 hover:bg-gray-700 disabled:opacity-30 rounded-lg text-sm transition-colors"
+            >
+              + Add
+            </button>
           </div>
         </div>
       )}
@@ -138,19 +239,27 @@ export default function TagPage() {
       {/* Results */}
       {result && (
         <main className="max-w-5xl mx-auto px-4 py-6">
-          <div className="text-sm text-gray-500 mb-4">
-            {result.total.toLocaleString()}
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm text-gray-400">
+              {result.total.toLocaleString()} results
+            </div>
+            <button
+              onClick={() => setResult(null)}
+              className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              Clear
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {result.novels.map((novel) => (
               <Link
                 key={novel.id}
                 href={`/?url=${encodeURIComponent(novel.url)}`}
-                className="flex gap-3 bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow group"
+                className="flex gap-3 bg-gray-900 border border-gray-800 rounded-lg p-3 hover:border-gray-600 transition-colors group"
               >
                 {/* Cover thumbnail */}
-                <div className="w-[72px] h-[100px] shrink-0 rounded overflow-hidden bg-gray-100">
+                <div className="w-[72px] h-[100px] shrink-0 rounded overflow-hidden bg-gray-800">
                   {novel.coverUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -159,7 +268,7 @@ export default function TagPage() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">
+                    <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs">
                       No Cover
                     </div>
                   )}
@@ -168,7 +277,7 @@ export default function TagPage() {
                 {/* Info */}
                 <div className="flex-1 min-w-0 flex flex-col">
                   {/* Title */}
-                  <h3 className="font-bold text-sm text-gray-900 leading-tight group-hover:text-blue-600 transition-colors line-clamp-1">
+                  <h3 className="font-bold text-sm text-gray-100 leading-tight group-hover:text-blue-400 transition-colors line-clamp-1">
                     {novel.title}
                   </h3>
 
@@ -182,7 +291,7 @@ export default function TagPage() {
                         className="w-4 h-4 rounded-full"
                       />
                     )}
-                    <span className="text-xs text-gray-500">{novel.userName}</span>
+                    <span className="text-xs text-gray-400">{novel.userName}</span>
                   </div>
 
                   {/* Tags */}
@@ -205,7 +314,7 @@ export default function TagPage() {
                   )}
 
                   {/* Stats */}
-                  <div className="flex items-center gap-2 mt-auto pt-1.5 text-xs text-gray-400">
+                  <div className="flex items-center gap-2 mt-auto pt-1.5 text-xs text-gray-500">
                     <span>{novel.textCount.toLocaleString()}字</span>
                     <span>{formatReadingTime(novel.readingTime)}</span>
                     <span className="flex items-center gap-0.5">
@@ -226,17 +335,17 @@ export default function TagPage() {
               <button
                 onClick={() => goToPage(page - 1)}
                 disabled={page <= 1 || loading}
-                className="px-4 py-2 text-sm bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed rounded-full transition-colors"
+                className="px-4 py-2 text-sm bg-gray-800 border border-gray-700 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors"
               >
                 Prev
               </button>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-400">
                 Page {page} / {Math.ceil(result.total / 30)}
               </span>
               <button
                 onClick={() => goToPage(page + 1)}
                 disabled={!result.hasMore || loading}
-                className="px-4 py-2 text-sm bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed rounded-full transition-colors"
+                className="px-4 py-2 text-sm bg-gray-800 border border-gray-700 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg transition-colors"
               >
                 Next
               </button>
@@ -245,10 +354,10 @@ export default function TagPage() {
         </main>
       )}
 
-      {/* Empty state */}
-      {!result && !loading && !error && (
-        <div className="flex items-center justify-center min-h-[60vh] text-gray-400">
-          <p>Enter a CP tag to search for novels</p>
+      {/* Empty state (no favorites, no results) */}
+      {!result && !loading && !error && favoriteTags.length === 0 && (
+        <div className="flex items-center justify-center min-h-[30vh] text-gray-600">
+          <p>Add some favorite tags or search above</p>
         </div>
       )}
     </div>
