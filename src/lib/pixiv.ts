@@ -123,14 +123,14 @@ export async function searchNovelsByTag(
   const novels: TagSearchResult[] = rawNovels.map(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (n: any) => ({
-      id: String(n.id || ""),
+      id: String(n.novelId || n.id || ""),
       title: n.title || "Untitled",
       userName: n.userName || "Unknown",
       textCount: n.textLength || n.textCount || 0,
       bookmarkCount: n.bookmarkCount || 0,
       tags: (n.tags || []).slice(0, 6),
       xRestrict: n.xRestrict || 0,
-      url: `https://www.pixiv.net/novel/show.php?id=${n.id || ""}`,
+      url: `https://www.pixiv.net/novel/show.php?id=${n.novelId || n.id || ""}`,
       coverUrl: n.cover?.urls?.["240mw"] || null,
       caption: n.caption || "",
       readingTime: n.readingTime || 0,
